@@ -1,7 +1,6 @@
 # Gradle Project AutoConfiguration for Java Development
 
-I worked in a big chinese company that do business on Internet. It is a result of my years of daily work in my career. 
-It provides opinionated way for daily Java/Groovy backend microservice development in enterprise. 
+It is a result of my years of daily work in my career. It provides opinionated way for daily Java/Groovy backend microservice development in enterprise. 
 
 Hopefully it maybe useful for you.
 
