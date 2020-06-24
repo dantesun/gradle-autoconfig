@@ -1,0 +1,3 @@
+if(!project.ext.autoconfig) return
+
+apply plugin: 'maven-publish'

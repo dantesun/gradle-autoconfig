@@ -7,7 +7,6 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 
-import java.net.URL;
 import java.util.Optional;
 
 public class SettingUpNexusMirrorAction implements Action<Project> {

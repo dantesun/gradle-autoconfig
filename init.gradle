@@ -1,0 +1,100 @@
+import org.gradle.api.internal.StartParameterInternal
+import org.gradle.initialization.DefaultGradlePropertiesLoader
+
+import static groovy.io.FileType.DIRECTORIES
+import static groovy.io.FileVisitResult.SKIP_SUBTREE
+
+logger.info("[GradleConfig] Init Script Executing....")
+def AUTOCONFIG_SWITCH = 'org.dsun.gradle.autoconfig'
+def isBuildSrc = { p ->
+    //If obj is buildSrc
+    if ("buildSrc" == p.name && ":" == p.path) {
+        return true
+    }
+    return false
+}
+def isMultipleProjectRoot = { Project p ->
+    !isBuildSrc(p) && p.depth == 0 && p.allprojects.size() > 1
+}
+def isAutoConfigEnabled = { p ->
+    if (p.hasProperty(AUTOCONFIG_SWITCH)) {
+        return "true" == p.getProperty(AUTOCONFIG_SWITCH)
+    }
+    return false;
+}
+Project.metaClass.isAutoConfigurable = {
+    !isBuildSrc(delegate) && !isMultipleProjectRoot(delegate as Project) && isAutoConfigEnabled(delegate)
+}
+Project.metaClass.getNexusMirror = {
+    return findProperty('nexus.mirror.url')
+}
+
+gradle.projectsLoaded {
+    if (isBuildSrc(rootProject) || !isAutoConfigEnabled(rootProject)) {
+        logger.info("[GradleConfig][ProjectsLoaded] BuildScript Configuration is skipped.")
+        return
+    }
+    rootProject.buildscript {
+        def mirrorUrl = rootProject.getNexusMirror()
+        if (mirrorUrl) {
+            repositories {
+                maven {
+                    name "GradleConfig[Nexus Mirror]"
+                    url mirrorUrl
+                }
+            }
+        }
+    }
+    rootProject.buildscript.dependencies {
+        classpath "pl.allegro.tech.build:axion-release-plugin:1.12.0"
+    }
+    logger.info("[GradleConfig][${rootProject.name}] BuildScript initialization is done.")
+}
+
+gradle.settingsEvaluated { Settings settings ->
+    if (isBuildSrc(settings.rootProject)) {
+        logger.info("[GradleConfig][${settings.rootProject.name}] Discoverying projects.(Ignored)}")
+        return
+    }
+    //gradle.properties is not loaded yet, have to do it my self
+    DefaultGradlePropertiesLoader propertiesLoader = new DefaultGradlePropertiesLoader(gradle.startParameter as StartParameterInternal)
+    def properties = propertiesLoader.loadGradleProperties(settings.rootDir)
+    if ("true" != properties.find(AUTOCONFIG_SWITCH)) {
+        logger.info("[GradleConfig][${settings.rootProject.name}] Discoverying projects.(Disabled)")
+        return
+    }
+
+    def skipDirs = ~/^(build|\..*|src|out)/
+    def preDir = {
+        if (skipDirs.matcher(it.name).matches())
+            return SKIP_SUBTREE
+    }
+
+    def getProjectName = { String dir ->
+        (dir - (settings.rootDir.toString() + "/")).replaceAll("/", ":")
+    }
+
+    settings.rootDir.traverse(
+            type: DIRECTORIES,
+            preDir: preDir) { dir ->
+        def dstr = dir.toString()
+        if ((!skipDirs.matcher(dir.name)) &&
+                new File(dstr + "/build.gradle").exists()) {
+            logger.info("[GradleConfig][${settings.rootProject.name}] Including project ${dstr}")
+            settings.include getProjectName(dstr)
+        }
+    }
+}
+
+gradle.beforeProject { Project project ->
+    if (!project.isAutoConfigurable()) {
+        logger.info("[GradleConfig:beforeProject][${project.name}] Ignoring AutoConfiguration.")
+        return
+    }
+    logger.info("[GradleConfig][${project.name}] Configuring Project{name: '${project.name}', path: '${project.path}', depth: ${project.depth}")
+    ["versioning", "project", "repositories", "testing"].each { scriptName ->
+        def scriptFile = gradle.rootProject.file("gradle/scripts/${scriptName}.gradle")
+        logger.info("[GradleConfig][${project.name}] Applying script file: ${scriptFile.name} ")
+        project.apply from: scriptFile
+    }
+}

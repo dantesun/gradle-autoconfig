@@ -1,0 +1,39 @@
+def groovySourceDir = project.file("src/main/groovy")
+def javaSourceDir = project.file("src/main/java")
+if (groovySourceDir.exists()) {
+    logger.info("[GradleConfig][${name}] Setting up Groovy Project")
+    apply plugin: 'groovy'
+    sourceSets.main.java.srcDirs = []
+    sourceSets.main.groovy.srcDirs += ["src/main/java"]
+} else if (javaSourceDir.exists()) {
+    logger.info("[GradleConfig][${name}] Setting up Java Project")
+    apply plugin: 'java'
+} else {
+    logger.info("[GradleConfig][${name}] ${javaSourceDir} or ${groovySourceDir.exists()} is not found, skip project configuration")
+    return
+}
+
+tasks.withType(AbstractCompile) {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+    options.compilerArgs << "-parameters"
+    options.compilerArgs << "-Xlint:all"
+    options.encoding = "UTF-8"
+}
+
+jar {
+    manifest {
+        attributes 'Implementation-Version': project.version,
+                'Implementation-Title': project.name,
+                'Implementation-Vendor-Id': project.group
+    }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    from sourceSets.main.allSource
+    classifier 'sources'
+}
+
+artifacts {
+    archives sourcesJar
+}

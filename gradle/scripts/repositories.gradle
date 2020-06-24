@@ -1,0 +1,9 @@
+def mirrorUrl = project.getNexusMirror()
+if (mirrorUrl) {
+    repositories {
+        maven {
+            name "NexusMirror"
+            url mirrorUrl
+        }
+    }
+}

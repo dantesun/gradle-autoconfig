@@ -1,8 +1,0 @@
-pluginManagement {
-    repositories {
-        mavenLocal()
-        maven {
-            url "http://nexus.docker.local/maven/repository"
-        }
-    }
-}

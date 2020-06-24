@@ -1,12 +1,9 @@
 package org.dsun.gradle;
 
-import org.dsun.gradle.action.ApplyPluginByIdAction;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Optional;
 
 public class ProjectFacade {
