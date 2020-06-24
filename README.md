@@ -4,6 +4,9 @@ It is a result of my years of daily work in my career. It provides opinionated w
 
 Hopefully it maybe useful for you.
 
+
+## NOTE: After you cloned this project, please execute `cd gradle-autoconfig; ln -sv ${PWD}/init.gradle ~/.gradle/init.gradle` 
+
 ## Design Goals
 
 ### Low learning curve
