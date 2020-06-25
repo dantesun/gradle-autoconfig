@@ -1,0 +1,4 @@
+def isAutoConfigInitiated = project.metaClass.respondsTo("isAutoConfigurable")
+if(!isAutoConfigInitiated) {
+    logger.lifecycle("[GradleConfig] Please put 'init.gradle' in your ${gradle.gradleUserHomeDir}")
+}

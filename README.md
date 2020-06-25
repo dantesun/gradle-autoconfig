@@ -24,7 +24,7 @@ Also, specific branching/versioning rules needs to be applied to all projects.
 `gradle-autoconfig` is a way to standardize everything. 
 
 ## Assumptions
-1. Language: Java/Groovy
+1. Language: Java/Groovy, Only JDK8+ is supported.
 2. Repository Manager: SonaType Nexus
 3. Source Control Management: Git 
 
