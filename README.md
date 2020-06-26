@@ -1,3 +1,6 @@
+# :no_entry_sign: This project is under active development and not ready for use yet. :no_entry_sign: 
+
+
 # Gradle Project AutoConfiguration for Java Development
 
 It is a result of my years of daily work in my career. It provides opinionated way for daily Java/Groovy backend microservice development in enterprise. 
