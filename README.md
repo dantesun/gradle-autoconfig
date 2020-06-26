@@ -32,7 +32,24 @@ Also, specific branching/versioning rules needs to be applied to all projects.
 3. Source Control Management: Git 
 
 ## A simple project discovery 
-(TODO)
+Any sub-directory in project root contains a file `build.gradle` will be treated as a valid Gradle project. For example:
+
+```diff
+ ├── .gradle 
+ ├── build 
+ ├── gradle
+ │   └── wrapper  
++├── sub-project1
++│   └── build.gradle or build.gradle.kts
++│   └── sub-project2
++│       └── build.gradle or build.gradle.kts
+ │
+ ├── build.gradle or build.gradle.kts 
+ ├── gradle.properties 
+ ├── gradlew 
+ ├── gradlew.bat 
+ └── settings.gradle or settings.gradle.kts 
+```
 
 ## Automatically versioning
 (TODO)
