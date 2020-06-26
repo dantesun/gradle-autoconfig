@@ -1,4 +1,3 @@
 apply plugin: PluginInfo.AXION_RELEASE
-
 group = "org.dsun.gradle"
 version = scmVersion.version

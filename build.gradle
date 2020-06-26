@@ -1,4 +1,14 @@
-def isAutoConfigInitiated = project.metaClass.respondsTo("isAutoConfigurable")
-if(!isAutoConfigInitiated) {
-    logger.lifecycle("[GradleConfig] Please put 'init.gradle' in your ${gradle.gradleUserHomeDir}")
+/*
+if ("true" != project.ext.properties.get('autoconfig')) {
+    throw new IllegalStateException("[GradleConfig] Please put 'autoconfig.gradle' in your ${gradle.gradleUserHomeDir}/init.d")
+}
+*/
+apply plugin: 'java'
+
+repositories {
+    mavenCentral()
+}
+dependencies {
+    compile "pl.allegro.tech.build:axion-release-plugin:1.12.0"
+    compile localGroovy()
 }

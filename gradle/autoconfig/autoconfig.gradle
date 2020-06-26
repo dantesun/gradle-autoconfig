@@ -1,0 +1,143 @@
+import static groovy.io.FileType.DIRECTORIES
+import static groovy.io.FileType.FILES
+import static groovy.io.FileVisitResult.SKIP_SUBTREE
+
+class GradleAutoConfigurationPlugin implements Plugin<Gradle> {
+    public static final AUTO_CONFIG_SWITCH = "org.dsun.gradle.autoconfig"
+    private static final Logger logger = Logging.getLogger(GradleAutoConfigurationPlugin.class)
+
+    private static boolean isAutoConfigOn(Project project) {
+        return "true" == project.properties.get(AUTO_CONFIG_SWITCH)
+    }
+
+    private static boolean isDisabled(Gradle target) {
+        StartParameter parameter = target.getStartParameter()
+        return "false" == parameter.getProjectProperties().get(AUTO_CONFIG_SWITCH)
+    }
+
+    private static boolean isBuildSrc(Project project) {
+        "buildSrc" == project.name && ":" == project.path
+    }
+
+    @Override
+    void apply(Gradle target) {
+        if (isDisabled(target)) {
+            logger.info("[GradleConfig] Gradle AutoConfiguration is globally disabled.")
+            return
+        }
+        logger.info("[GradleConfig] Init Script Executing....")
+        target.settingsEvaluated(new DiscoverProjectsAction())
+        target.projectsLoaded(new ConfigBuildScriptRepositories())
+        target.beforeProject(new AutoConfigureAction())
+    }
+
+    class AutoConfigureAction implements Action<Project> {
+        private static boolean isAutoConfigurable(Project project) {
+            if (isBuildSrc(project)) {
+                return false
+            }
+            //Single project
+            if (project.rootProject.allprojects.size() == 1) {
+                return true
+            }
+            //The root project in a multi-project is not configurable
+            if (project.depth == 0 && project.path == ":") {
+                return false
+            }
+            return true
+        }
+
+        @Override
+        void execute(Project project) {
+            if (!isAutoConfigurable(project)) {
+                logger.info("[GradleConfig:beforeProject][${project.name}] Ignoring AutoConfiguration.")
+                return
+            }
+            logger.info("[GradleConfig][${project.name}] Configuring Project ...")
+            ["versioning", "project", "repositories", "testing"].each { scriptName ->
+                def scriptFile = project.rootProject.file("gradle/autoconfig/before.d/${scriptName}.gradle")
+                logger.info("[GradleConfig][${project.name}] Applying script file: ${scriptFile.name} ")
+                project.apply from: scriptFile
+            }
+
+        }
+    }
+
+    class DiscoverProjectsAction implements Action<Settings> {
+
+        private static boolean isAutoConfigurable(Settings settings) {
+            if ("buildSrc" == settings.rootProject.name && ":" == settings.rootProject.path) {
+                return false
+            }
+            //gradle.properties is not loaded yet, have to do it my self
+            File gradlePropertiesFile = new File(settings.rootDir, "gradle.properties")
+            Properties properties = new Properties()
+            gradlePropertiesFile.withInputStream {
+                properties.load(it)
+            }
+            if ("true" != properties.get(AUTO_CONFIG_SWITCH)) {
+                logger.info("[GradleConfig][${settings.rootProject.name}] Discoverying projects.(Disabled)")
+                return false
+            }
+            return true;
+        }
+
+        @Override
+        void execute(Settings settings) {
+            if (!isAutoConfigurable(settings)) {
+                logger.info("[GradleConfig][${settings.rootProject.name}] Discoverying projects.(Ignored)}")
+                return
+            }
+
+            def skipDirs = ~/^(build|\..*|src|out)/
+            def preDir = {
+                if (skipDirs.matcher(it.name).matches())
+                    return SKIP_SUBTREE
+            }
+
+            def getProjectName = { String dir ->
+                (dir - (settings.rootDir.toString() + "/")).replaceAll("/", ":")
+            }
+
+            settings.rootDir.traverse(type: DIRECTORIES, preDir: preDir) { dir ->
+                if (skipDirs.matcher(dir.name)) {
+                    return
+                }
+                def buildFileExist = false
+                dir.eachFileMatch FILES, ~/build.gradle(?:.kts)?/, { buildFileExist = true }
+                logger.info("[GradleConfig][${settings.rootProject.name}] Including project ${dir.name}")
+                settings.include getProjectName(dir.toString())
+            }
+        }
+    }
+
+    class ConfigBuildScriptRepositories implements Action<Gradle> {
+
+        void execute(Project project) {
+            if (isBuildSrc(project) || !isAutoConfigOn(project)) {
+                logger.info("[GradleConfig][ProjectsLoaded] BuildScript Configuration is skipped.")
+                return
+            }
+            def repositories = project.buildscript.repositories
+            def mirrorUrl = project.getProperties().get('nexus.mirror.url')
+            def setMavenRepo = { MavenArtifactRepository repo ->
+                repo.name("Nexus Mirror")
+                repo.url(mirrorUrl)
+            }
+            if (mirrorUrl) {
+                repositories.maven(setMavenRepo)
+            }
+            def dependencies = project.buildscript.dependencies
+            dependencies.add("classpath", "pl.allegro.tech.build:axion-release-plugin:1.12.0")
+            dependencies.localGroovy()
+            logger.info("[GradleConfig][${project.name}] BuildScript initialization is done.")
+        }
+
+        @Override
+        void execute(Gradle gradle) {
+            execute(gradle.rootProject)
+        }
+    }
+}
+
+apply plugin: GradleAutoConfigurationPlugin
