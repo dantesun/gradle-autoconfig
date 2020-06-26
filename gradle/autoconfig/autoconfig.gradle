@@ -1,10 +1,4 @@
-import org.gradle.initialization.DefaultGradlePropertiesLoader
-import static groovy.io.FileType.DIRECTORIES
-import static groovy.io.FileType.FILES
-import static groovy.io.FileVisitResult.SKIP_SUBTREE
-
 class ConfigUtils {
-    private static final Logger logger = Logging.getLogger(ConfigUtils)
 
     public static final AUTO_CONFIG_SWITCH = "org.dsun.gradle.autoconfig"
     public static final String BUILD_SRC = "buildSrc"
@@ -36,23 +30,6 @@ class ConfigUtils {
         return true
     }
 
-    static boolean isAutoConfigurable(Settings settings) {
-        if (BUILD_SRC == settings.rootProject.name && ROOT_PATH == settings.rootProject.path) {
-            logger.info("[GradleConfig] skip BuildSrc")
-            return false
-        }
-        //gradle.properties is not loaded yet, have to load it manually
-        DefaultGradlePropertiesLoader propertiesLoader = new DefaultGradlePropertiesLoader(settings.gradle.startParameter)
-        logger.info("[GradleConfig] Loading gradle.properties from ${settings.rootDir}")
-        propertiesLoader.loadProperties(settings.rootDir)
-        Map<String, String> props = propertiesLoader.mergeProperties(new HashMap<String, String>())
-        logger.info("[GradleConfig] GradleProperties ${props}")
-        if ("true" != props.get(AUTO_CONFIG_SWITCH)) {
-            return false
-        }
-        return true;
-    }
-
     static boolean isGloballyOff(Gradle g) {
         StartParameter parameter = g.getStartParameter()
         return "false" == parameter.getProjectProperties().get(AUTO_CONFIG_SWITCH)
@@ -60,37 +37,6 @@ class ConfigUtils {
 
     static boolean isBuildSrc(Project project) {
         BUILD_SRC == project.name && ROOT_PATH == project.path
-    }
-}
-
-class DiscoverProjectsAction implements Action<Settings> {
-    private static final Logger logger = Logging.getLogger(DiscoverProjectsAction.class)
-
-    @Override
-    void execute(Settings settings) {
-        if (!ConfigUtils.isAutoConfigurable(settings)) {
-            logger.info("[GradleConfig][${settings.rootProject.name}] Discoverying projects is skipped...)}")
-            return
-        }
-        def skipDirs = ~/^(build|\..*|src|out)/
-        def preDir = {
-            if (skipDirs.matcher(it.name).matches())
-                return SKIP_SUBTREE
-        }
-
-        def getProjectName = { String dir ->
-            (dir - (settings.rootDir.toString() + "/")).replaceAll("/", ":")
-        }
-
-        settings.rootDir.traverse(type: DIRECTORIES, preDir: preDir) { dir ->
-            if (skipDirs.matcher(dir.name)) {
-                return
-            }
-            def buildFileExist = false
-            dir.eachFileMatch FILES, ~/build.gradle(?:.kts)?/, { buildFileExist = true }
-            logger.info("[GradleConfig][${settings.rootProject.name}] Including project ${dir.name}")
-            settings.include getProjectName(dir.toString())
-        }
     }
 }
 
@@ -145,7 +91,6 @@ class GradleAutoConfigurationPlugin implements Plugin<Gradle> {
             return
         }
         logger.info("[GradleConfig] Init Script Executing....")
-        target.settingsEvaluated(new DiscoverProjectsAction())
         target.projectsLoaded(new ConfigBuildScriptRepositories())
         target.beforeProject(new ConfigProject())
     }

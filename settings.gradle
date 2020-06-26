@@ -1,0 +1,25 @@
+import static groovy.io.FileType.DIRECTORIES
+import static groovy.io.FileType.FILES
+import static groovy.io.FileVisitResult.SKIP_SUBTREE
+
+def skipDirs = ~/^(build|\..*|src|out)/
+def preDir = {
+    if (skipDirs.matcher(it.name).matches())
+        return SKIP_SUBTREE
+}
+
+def getProjectName = { String dir ->
+    (dir - (rootDir.toString() + "/")).replaceAll("/", ":")
+}
+
+rootDir.traverse(type: DIRECTORIES, preDir: preDir) { dir ->
+    if (skipDirs.matcher(dir.name)) {
+        return
+    }
+    def buildFileExist = false
+    dir.eachFileMatch FILES, ~/build.gradle(?:.kts)?/, { buildFileExist = true }
+    if(buildFileExist) {
+        logger.info("[GradleConfig][${rootProject.name}] Including project ${dir.name}")
+        include getProjectName(dir.toString())
+    }
+}
