@@ -37,6 +37,7 @@ It also has a global switch to turn it off completely.
 1. Language: Java/Groovy, Only JDK8+ is supported.
 2. Repository Manager: SonaType Nexus
 3. Source Control Management: Git 
+4. Gradle 4.2.1 and above
 
 # User Guide
 
