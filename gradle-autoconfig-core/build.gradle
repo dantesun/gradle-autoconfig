@@ -1,1 +1,0 @@
-logger.info("[GradleConfig] I am ${project.name} ${autoconfig}.")

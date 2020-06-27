@@ -1,5 +1,3 @@
-logger.info("[GradleConfig] I am ${project.name} ${autoconfig}.")
-
 apply plugin: "java-gradle-plugin"
 gradlePlugin {
     plugins {
@@ -10,5 +8,6 @@ gradlePlugin {
     }
 }
 dependencies {
+    implementation project(":gradle-autoconfig-core")
     implementation 'org.slf4j:slf4j-api:1.7.30'
 }

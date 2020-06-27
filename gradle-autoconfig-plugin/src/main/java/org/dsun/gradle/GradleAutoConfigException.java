@@ -4,6 +4,7 @@ import org.slf4j.helpers.FormattingTuple;
 
 import static org.slf4j.helpers.MessageFormatter.arrayFormat;
 
+@SuppressWarnings({"serial"})
 public class GradleAutoConfigException extends RuntimeException {
     private final FormattingTuple formattingTuple;
 
