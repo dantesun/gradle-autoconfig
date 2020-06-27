@@ -1,6 +1,6 @@
-plugins {
-    id "java-gradle-plugin"
-}
+logger.info("[GradleConfig] I am ${project.name} ${autoconfig}.")
+
+apply plugin: "java-gradle-plugin"
 gradlePlugin {
     plugins {
         simplePlugin {

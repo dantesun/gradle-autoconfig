@@ -10,7 +10,14 @@ It is a result of my years of daily work in my career. It provides opinionated w
 
 Hopefully it maybe useful for you.
 
-## NOTE: After you cloned this project, please execute `cd gradle-autoconfig; ln -sv ${PWD}/init.gradle ~/.gradle/init.gradle` 
+## NOTE for contributors 
+
+After you cloned this project, please put `autoconfig.gradle` in your Gradle user home directory's init.d subdirectory, 
+normally in `~/.gradle/init.d/`. A symbol link is working correctly.
+
+```bash
+ln -sv $PWD/gradle/autoconfig/autoconfig.gradle ~/.gradle/init.d/
+```
 
 ## Design Goals
 
@@ -27,6 +34,10 @@ several OpenSource Gradle plugins.
 In an enterprise, normally there's a CI/CD system. The Ops team need to customize the building environment.
 Also, specific branching/versioning rules needs to be applied to all projects. 
 `gradle-autoconfig` is a way to standardize everything. 
+
+`gradle-autoconfig` uses **ONE** and managed `settings.gradle`. The root project's only acting like a container
+that manages the sub-projects, no source code can be put in root project. In this way, it greatly reduces the 
+complexity of management of your Gradle projects.  
 
 ### Step out of your way
 

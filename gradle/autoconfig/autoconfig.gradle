@@ -4,27 +4,13 @@ class ConfigUtils {
     public static final String BUILD_SRC = "buildSrc"
     public static final String ROOT_PATH = ":"
 
-    static boolean isAutoConfigOn(Project project) {
-        return "true" == project.properties.get(AUTO_CONFIG_SWITCH)
-    }
 
     static boolean isAutoConfigurable(Project project) {
         if (isBuildSrc(project)) {
-            project.logger.info("[GradleConfig] Skip ${project.name}")
             return false
         }
-        if (!isAutoConfigOn(project)) {
-            project.logger.info("[GradleConfig] ${AUTO_CONFIG_SWITCH} is off, skipping ${project.name}")
-            return false
-
-        }
-        //Single project
-        if (project.rootProject.allprojects.size() == 1) {
-            return true
-        }
-        //The root project in a multi-project is not configurable
-        if (project.depth == 0 && project.path == ":") {
-            project.logger.info("[GradleConfig] skipping root project ${project.name}")
+        if (!("true" == project.properties.get(AUTO_CONFIG_SWITCH))) {
+            project.logger.info("[GradleConfig][${project.name}] ${AUTO_CONFIG_SWITCH} is off.")
             return false
         }
         return true
@@ -36,63 +22,99 @@ class ConfigUtils {
     }
 
     static boolean isBuildSrc(Project project) {
-        BUILD_SRC == project.name && ROOT_PATH == project.path
+        if (BUILD_SRC == project.name && ROOT_PATH == project.path) {
+            project.logger.info("[GradleConfig][${project.name}] Gradle BuildSrc Project.")
+            return true
+        }
+        return false
+    }
+
+    static boolean isRoot(Project project) {
+        project.rootProject == project
     }
 }
 
-class ConfigBuildScriptRepositories implements Action<Gradle> {
+class RepositoryAutoConfiguration implements Action<Project> {
+    public static final String NEXUS_REPO_NAME = "Nexus Mirror(Auto-Configured)"
+    private boolean useMavenLocal = false
 
     @Override
-    void execute(Gradle gradle) {
-        config(gradle.rootProject)
-    }
-
-    private static void config(Project project) {
-        def repositories = project.buildscript.repositories
-        def mirrorUrl = project.getProperties().get('nexus.mirror.url')
-        def setMavenRepo = { MavenArtifactRepository repo ->
-            repo.name("Nexus Mirror")
-            repo.url(mirrorUrl)
+    void execute(Project project) {
+        def repoUrl = project.getProperties().get('nexus.mirror.url')
+        def repoName = NEXUS_REPO_NAME
+        project.logger.info("[GradleConfig][${project.name}] Nexus Mirror Url ${repoUrl ?: 'is not set.'}")
+        if (!repoUrl) {
+            repoUrl = RepositoryHandler.MAVEN_CENTRAL_URL
+            repoName = RepositoryHandler.DEFAULT_MAVEN_CENTRAL_REPO_NAME
         }
-        if (mirrorUrl) {
-            repositories.maven(setMavenRepo)
+        def configAction = { RepositoryHandler repositories ->
+            if (useMavenLocal) {
+                repositories.mavenLocal()
+            } else {
+                project.logger.info("[GradleConfig][${project.name}] Maven Local Repository is disabled.")
+            }
+            repositories.maven {
+                url repoUrl
+                name repoName
+            }
         }
-        def dependencies = project.buildscript.dependencies
-        dependencies.add("classpath", "com.palantir.gradle.gitversion:gradle-git-version:0.12.3")
-        project.logger.info("[GradleConfig][${project.name}] BuildScript initialization is done.")
-    }
+        if (!ConfigUtils.isRoot(project)) {
+            project.logger.info("[GradleConfig][${project.name}] Setting up repositories.")
+            project.repositories(configAction)
+            return
+        }
 
+        project.logger.info("[GradleConfig][${project.name}] Setting up BuildScript repositories.")
+        project.buildscript.repositories(configAction)
+
+        project.logger.info("[GradleConfig][${project.name}] Setting up BuildScript/Plugin dependencies.")
+        project.buildscript {
+            dependencies {
+                classpath "com.palantir.gradle.gitversion:gradle-git-version:0.12.3"
+            }
+        }
+        if (project.childProjects.isEmpty()) {
+            project.logger.info("[GradleConfig][${project.name}] Single Project Build")
+            project.repositories(configAction)
+        }
+    }
 }
 
-class ConfigProject implements Action<Project> {
+class ProjectAutoConfiguration implements Action<Project> {
+
+    private static final Logger logger = Logging.getLogger(ProjectAutoConfiguration)
+    private final RepositoryAutoConfiguration REPO_AUTO_CONFIG = new RepositoryAutoConfiguration()
 
     @Override
     void execute(Project project) {
         if (!ConfigUtils.isAutoConfigurable(project)) {
+            logger.info("[GradleConfig][${project.name}] Skip Project AutoConfiguration")
+            project.extensions.extraProperties.set("autoconfig", false)
             return
         }
-        project.logger.info("[GradleConfig][${project.name}] Configuring Project ...")
-        ["versioning", "project", "repositories", "testing"].each { scriptName ->
-            def scriptFile = project.rootProject.file("gradle/autoconfig/before.d/${scriptName}.gradle")
-            project.logger.info("[GradleConfig][${project.name}] Applying script file: ${scriptFile.name} ")
+        REPO_AUTO_CONFIG.execute(project)
+        if (ConfigUtils.isRoot(project)) {
+            return
+        }
+        project.extensions.extraProperties.set("autoconfig", true)
+        ["versioning", "project", "testing"].each { scriptName ->
+            def scriptFile = project.gradle.rootProject.file("gradle/autoconfig/init.d/${scriptName}.gradle")
+            project.logger.info("[GradleConfig][${project.name}] Applying: ${scriptFile.name} ")
             project.apply from: scriptFile
         }
     }
+
 }
 
 
 class GradleAutoConfigurationPlugin implements Plugin<Gradle> {
-    private static final Logger logger = Logging.getLogger(GradleAutoConfigurationPlugin.class)
-
     @Override
     void apply(Gradle target) {
         if (ConfigUtils.isGloballyOff(target)) {
             logger.info("[GradleConfig] Gradle AutoConfiguration is globally disabled.")
             return
         }
-        logger.info("[GradleConfig] Init Script Executing....")
-        target.projectsLoaded(new ConfigBuildScriptRepositories())
-        target.beforeProject(new ConfigProject())
+        target.beforeProject(new ProjectAutoConfiguration())
     }
 
 }
