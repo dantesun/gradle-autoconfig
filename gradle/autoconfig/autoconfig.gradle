@@ -54,6 +54,10 @@ class RepositoryAutoConfiguration implements Action<Project> {
                 project.logger.info("[GradleConfig][${project.name}] Maven Local Repository is disabled.")
             }
             repositories.maven {
+                url "https://plugins.gradle.org/m2"
+                name "Gradle Plugin Portal"
+            }
+            repositories.maven {
                 url repoUrl
                 name repoName
             }
