@@ -10,7 +10,7 @@ It is a result of my years of daily work in my career. It provides opinionated w
 
 Hopefully it maybe useful for you.
 
-## NOTE for contributors 
+## Note
 
 After you cloned this project, please put `autoconfig.gradle` in your Gradle user home directory's init.d subdirectory, 
 normally in `~/.gradle/init.d/`. A symbol link is working correctly.
@@ -102,68 +102,5 @@ So the version number should be in three forms:
 
 (To be continued ...)
 
-## Tips And Tricks: Working with a Nexus server locally
 
-1. Create a persistent data directory `mkdir -p ${HOME}/workspace/nexus-data`
-2. Create a `docker-compose.yml`.
-```$xslt
-version: "3.8"
-  services:
-    nexus:
-        restart: always
-        image: sonatype/nexus
-        volumes:
-            - ${HOME}/workspace/nexus-data:/sonatype-work
-```
-NOTE: `restart: always` is useful. Docker instances will automatically start after computer reboot.
-3. Run `docker-compose -d up`.
-4. Create `proxy` type of Repositories for
-
-5. Creating/Updating your `~/.gradle/gradle.properties`
-
-```$xslt
-nexus.mirror.url=127.0.0.1/nexus/contents/group/public
-```
-
-6. Replace your `~/.m2/settings.xml`
-```$xslt
-<?xml version="1.0" encoding="UTF-8"?>
-<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-  <mirrors>
-    <mirror>
-      <id>local-public</id>
-      <name>Dante Sun Public</name>
-      <url>http://127.0.0.1:8081/nexus/content/groups/public</url>
-      <mirrorOf>*</mirrorOf>
-    </mirror>
-  </mirrors>
-  <profiles>
-    <profile>
-      <id>local-nexus</id>
-      <repositories>
-        <repository>
-          <id>localhost</id>
-          <url>http://127.0.0.1:8081/nexus/content/groups/public</url>
-           <releases>
-              <enabled>true</enabled>
-           </releases>
-           <snapshots>
-              <enabled>true</enabled>
-              <updatePolicy>always</updatePolicy>
-           </snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>localhost</id>
-          <url>http://127.0.0.1:8081/nexus/content/groups/public</url>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-  </profiles>
-  <activeProfiles>
-      <activeProfile>local-nexus</activeProfile>
-   </activeProfiles>
-</settings>
-```
 
