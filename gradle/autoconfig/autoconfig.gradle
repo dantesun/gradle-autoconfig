@@ -1,14 +1,9 @@
 class ConfigUtils {
-
     public static final AUTO_CONFIG_SWITCH = "org.dsun.gradle.autoconfig"
     public static final String BUILD_SRC = "buildSrc"
     public static final String ROOT_PATH = ":"
 
-
     static boolean isAutoConfigurable(Project project) {
-        if (isBuildSrc(project)) {
-            return false
-        }
         if (!("true" == project.properties.get(AUTO_CONFIG_SWITCH))) {
             project.logger.info("[GradleConfig][${project.name}] ${AUTO_CONFIG_SWITCH} is off.")
             return false
@@ -36,11 +31,24 @@ class ConfigUtils {
 
 class RepositoryAutoConfiguration implements Action<Project> {
     public static final String NEXUS_REPO_NAME = "Nexus Mirror(Auto-Configured)"
+    public static final String NEXUS_MIRROR_URL = 'nexus.mirror.url'
     private boolean useMavenLocal = false
+
+    static void setPluginManagement(Settings s) {
+        def logger = Logging.getLogger(RepositoryAutoConfiguration)
+        def repoUrl = "https://plugins.gradle.org/m2"
+        if (s.hasProperty(NEXUS_MIRROR_URL)) {
+            repoUrl = s.getProperty(NEXUS_MIRROR_URL)
+        }
+        logger.info("[GradleConfig] PluginManagement Configuration: ${repoUrl}")
+        s.pluginManagement.repositories.maven {
+            it.url = repoUrl
+        }
+    }
 
     @Override
     void execute(Project project) {
-        def repoUrl = project.getProperties().get('nexus.mirror.url')
+        def repoUrl = project.getProperties().get(NEXUS_MIRROR_URL)
         def repoName = NEXUS_REPO_NAME
         project.logger.info("[GradleConfig][${project.name}] Nexus Mirror Url ${repoUrl ?: 'is not set.'}")
         if (!repoUrl) {
@@ -53,10 +61,12 @@ class RepositoryAutoConfiguration implements Action<Project> {
             } else {
                 project.logger.info("[GradleConfig][${project.name}] Maven Local Repository is disabled.")
             }
+            /*
             repositories.maven {
                 url "https://plugins.gradle.org/m2"
                 name "Gradle Plugin Portal"
             }
+             */
             repositories.maven {
                 url repoUrl
                 name repoName
@@ -75,6 +85,7 @@ class RepositoryAutoConfiguration implements Action<Project> {
         project.buildscript {
             dependencies {
                 classpath "com.palantir.gradle.gitversion:gradle-git-version:0.12.3"
+                classpath "io.spring.javaformat:spring-javaformat-gradle-plugin:0.0.22"
             }
         }
         if (project.childProjects.isEmpty()) {
@@ -87,17 +98,25 @@ class RepositoryAutoConfiguration implements Action<Project> {
 class ProjectAutoConfiguration implements Action<Project> {
 
     private static final Logger logger = Logging.getLogger(ProjectAutoConfiguration)
-    private final RepositoryAutoConfiguration REPO_AUTO_CONFIG = new RepositoryAutoConfiguration()
+    private RepositoryAutoConfiguration repoAutoConfig
+
+    ProjectAutoConfiguration(RepositoryAutoConfiguration repoAutoConfig) {
+        this.repoAutoConfig = repoAutoConfig
+    }
 
     @Override
     void execute(Project project) {
+        repoAutoConfig.execute(project)
         if (!ConfigUtils.isAutoConfigurable(project)) {
             logger.info("[GradleConfig][${project.name}] Skip Project AutoConfiguration")
             project.extensions.extraProperties.set("autoconfig", false)
             return
         }
-        REPO_AUTO_CONFIG.execute(project)
         if (ConfigUtils.isRoot(project)) {
+            return
+        }
+        if (ConfigUtils.isBuildSrc(project)) {
+            project.logger.info("[GradleConfig][${project.name}] Skip Configuration. ")
             return
         }
         project.extensions.extraProperties.set("autoconfig", true)
@@ -115,10 +134,13 @@ class GradleAutoConfigurationPlugin implements Plugin<Gradle> {
     @Override
     void apply(Gradle target) {
         if (ConfigUtils.isGloballyOff(target)) {
-            logger.info("[GradleConfig] Gradle AutoConfiguration is globally disabled.")
             return
         }
-        target.beforeProject(new ProjectAutoConfiguration())
+        final RepositoryAutoConfiguration repositoryAutoConfiguration = new RepositoryAutoConfiguration()
+        target.beforeSettings { Settings s ->
+            repositoryAutoConfiguration.setPluginManagement(s)
+        }
+        target.beforeProject(new ProjectAutoConfiguration(repositoryAutoConfiguration))
     }
 
 }

@@ -1,3 +1,4 @@
+logger.info("[Gradle Config] Discovering projects...")
 import static groovy.io.FileType.DIRECTORIES
 import static groovy.io.FileType.FILES
 import static groovy.io.FileVisitResult.SKIP_SUBTREE

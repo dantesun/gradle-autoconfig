@@ -1,11 +1,11 @@
-# :no_entry_sign: This project is under active development and not ready for use yet. :no_entry_sign: 
+# :no_entry_sign: :no_entry_sign: This project is under active development and not ready for use yet. 
 
+# `gradle-autoconfig` - Gradle Project AutoConfiguration Framework
 
-# :no_entry_sign: :no_entry_sign: This project is under active development and not ready for use yet.
+It is a result of my years of daily work in my career. Originally are the rules my team followed, some of them are implemented
+by a gradle plugin, some of them are just a common sense. In this project, I try to turn the `common sense` part into code too.
+It provides opinionated way for daily Java/Groovy development in enterprise. 
 
-# Gradle Project AutoConfiguration for Java Development(`gradle-autoconfig`)
-
-It is a result of my years of daily work in my career. It provides opinionated way for daily Java/Groovy development in enterprise. 
 [Nebula Plugins](https://nebula-plugins.github.io/) is a similar effort, But `gradle-autoconfig` do it in a cleaner way.
 
 Hopefully it maybe useful for you.
@@ -52,9 +52,28 @@ It also has a global switch to turn it off completely.
 
 # User Guide
 
-## Automated project discovery 
+## Managed Repository Policy
 
-Recursively, any sub-directory in project root contains a file `build.gradle` will be treated as a valid Gradle project. For example:
+The centralized repository management is really important for an enterprise because of the concerns for Security/API Compatibility/LICENSE ...etc.
+
+However, Gradle allows you to specify separate Repository Manager(SonaType Nexus/Ivy/Artifactory) for Plugin/BuildScript dependencies and Project dependencies.
+
+1. `pluginManagement.repositories{}` for `plugins{}` DSL
+2. `project.buildscript.repositories{}` for `apply plugin: ${pluginId}` DSL
+3. `project.repositories` for your project's dependency
+4. `buildSrc` is a separate project that can be configured independently.
+
+`gradle-autoconfig` provides a way to set a single repository manager for all. 
+
+## Managed Project Build Layout
+
+Gradle supports a complex project hierarchy when you are using multiple `settings.gradle` files.
+see [Build Lifecycle](https://docs.gradle.org/current/userguide/build_lifecycle.html) and [Multi-project Builds](https://docs.gradle.org/current/userguide/multi_project_builds.html)) for details
+
+It's really hard to see the relationships and building logic the first glance. You have to maintain a big `settings.gradle` file.
+For example, [SpringBoot's settings.gradle](https://github.com/spring-projects/spring-boot/blob/master/settings.gradle) or [Gradle's settings.gradle](https://github.com/gradle/gradle/blob/master/settings.gradle.kts).
+
+In `gradle-autoconfig`,  any sub-directory(recursively) in project root contains a file `build.gradle` will be treated as a valid Gradle project. For example:
 
 ```diff
  ├── .gradle 
