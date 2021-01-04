@@ -1,4 +1,9 @@
-apply plugin: "java-gradle-plugin"
+plugins {
+    id "com.github.johnrengelman.shadow" version "6.1.0"
+    id "java-gradle-plugin"
+}
+import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
+
 gradlePlugin {
     plugins {
         simplePlugin {
@@ -7,7 +12,19 @@ gradlePlugin {
         }
     }
 }
-dependencies {
-    implementation project(":gradle-autoconfig-core")
-    implementation 'org.slf4j:slf4j-api:1.7.30'
+repositories {
+    mavenCentral()
 }
+dependencies {
+    shadow localGroovy()
+    shadow gradleApi()
+    compile 'org.aeonbits.owner:owner-java8:1.0.12'
+    compile 'org.yaml:snakeyaml:1.27'
+    compile 'org.slf4j:slf4j-api:1.7.30'
+}
+
+task relocateShadowJar(type: ConfigureShadowRelocation) {
+    target = tasks.shadowJar
+}
+
+tasks.shadowJar.dependsOn tasks.relocateShadowJar

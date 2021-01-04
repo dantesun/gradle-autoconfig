@@ -44,6 +44,7 @@ class RepositoryAutoConfiguration implements Action<Project> {
         s.pluginManagement.repositories.maven {
             it.url = repoUrl
         }
+        s.gradle.beforeProject(new RepositoryAutoConfiguration())
     }
 
     @Override
@@ -98,15 +99,9 @@ class RepositoryAutoConfiguration implements Action<Project> {
 class ProjectAutoConfiguration implements Action<Project> {
 
     private static final Logger logger = Logging.getLogger(ProjectAutoConfiguration)
-    private RepositoryAutoConfiguration repoAutoConfig
-
-    ProjectAutoConfiguration(RepositoryAutoConfiguration repoAutoConfig) {
-        this.repoAutoConfig = repoAutoConfig
-    }
 
     @Override
     void execute(Project project) {
-        repoAutoConfig.execute(project)
         if (!ConfigUtils.isAutoConfigurable(project)) {
             logger.info("[GradleConfig][${project.name}] Skip Project AutoConfiguration")
             project.extensions.extraProperties.set("autoconfig", false)
@@ -140,7 +135,7 @@ class GradleAutoConfigurationPlugin implements Plugin<Gradle> {
         target.beforeSettings { Settings s ->
             repositoryAutoConfiguration.setPluginManagement(s)
         }
-        target.beforeProject(new ProjectAutoConfiguration(repositoryAutoConfiguration))
+        target.beforeProject(new ProjectAutoConfiguration())
     }
 
 }
